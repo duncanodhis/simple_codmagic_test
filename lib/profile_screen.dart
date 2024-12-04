@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -11,6 +12,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _profession = 'Software Guy';
   String _interests = 'Coding, Travel, Music';
   String _aboutMe = 'Passionate developer looking for meaningful connections';
+  String _location = 'Not set';
+  double _distance = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // Request location permissions
+      LocationPermission permission = await Geolocator.requestPermission();
+
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _location = 'Location access denied';
+        });
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // You might want to use a geocoding service to convert coordinates to a readable address
+      setState(() {
+        _location =
+            '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+      });
+
+      // Example of calculating distance (you'd replace this with actual reference point)
+      Position referencePosition = Position(
+        latitude: 40.7128, // Example: New York City coordinates
+        longitude: -74.0060,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        heading: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+      double distanceInMeters = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          referencePosition.latitude,
+          referencePosition.longitude);
+
+      setState(() {
+        _distance = distanceInMeters / 1000; // Convert to kilometers
+      });
+    } catch (e) {
+      setState(() {
+        _location = 'Unable to retrieve location';
+      });
+      print('Error getting location: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,14 +117,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         profession: _profession,
                         interests: _interests,
                         aboutMe: _aboutMe,
+                        location: _location,
                         onSave: (updatedName, updatedAge, updatedProfession,
-                            updatedInterests, updatedAboutMe) {
+                            updatedInterests, updatedAboutMe, updatedLocation) {
                           setState(() {
                             _name = updatedName;
                             _age = updatedAge;
                             _profession = updatedProfession;
                             _interests = updatedInterests;
                             _aboutMe = updatedAboutMe;
+                            _location = updatedLocation;
                           });
                         },
                       ),
@@ -85,6 +148,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: Text(_aboutMe),
                 ),
               ),
+              Card(
+                child: ListTile(
+                  title: Text('Location'),
+                  subtitle: Text(_location),
+                ),
+              ),
+              Card(
+                child: ListTile(
+                  title: Text('Distance from Reference Point'),
+                  subtitle: Text('${_distance.toStringAsFixed(2)} km'),
+                ),
+              ),
             ],
           ),
         ),
@@ -99,7 +174,8 @@ class EditProfileScreen extends StatefulWidget {
   final String profession;
   final String interests;
   final String aboutMe;
-  final Function(String, int, String, String, String) onSave;
+  final String location;
+  final Function(String, int, String, String, String, String) onSave;
 
   const EditProfileScreen({
     required this.name,
@@ -107,6 +183,7 @@ class EditProfileScreen extends StatefulWidget {
     required this.profession,
     required this.interests,
     required this.aboutMe,
+    required this.location,
     required this.onSave,
   });
 
@@ -120,6 +197,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _professionController;
   late TextEditingController _interestsController;
   late TextEditingController _aboutMeController;
+  late TextEditingController _locationController;
 
   @override
   void initState() {
@@ -129,6 +207,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _professionController = TextEditingController(text: widget.profession);
     _interestsController = TextEditingController(text: widget.interests);
     _aboutMeController = TextEditingController(text: widget.aboutMe);
+    _locationController = TextEditingController(text: widget.location);
   }
 
   @override
@@ -164,6 +243,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 decoration: InputDecoration(labelText: 'About Me'),
                 maxLines: 3,
               ),
+              TextField(
+                controller: _locationController,
+                decoration: InputDecoration(labelText: 'Location'),
+                readOnly: true, // Location is set automatically
+              ),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
@@ -173,6 +257,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     _professionController.text,
                     _interestsController.text,
                     _aboutMeController.text,
+                    _locationController.text,
                   );
                   Navigator.pop(context);
                 },
