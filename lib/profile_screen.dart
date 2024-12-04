@@ -54,6 +54,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         heading: 0,
         speed: 0,
         speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy: 0,
       );
 
       double distanceInMeters = Geolocator.distanceBetween(
@@ -166,6 +168,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    // It's good practice to dispose of controllers and listeners
+    super.dispose();
+  }
 }
 
 class EditProfileScreen extends StatefulWidget {
@@ -211,6 +219,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   @override
+  void dispose() {
+    // Dispose of controllers to prevent memory leaks
+    _nameController.dispose();
+    _ageController.dispose();
+    _professionController.dispose();
+    _interestsController.dispose();
+    _aboutMeController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -251,21 +271,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  widget.onSave(
-                    _nameController.text,
-                    int.tryParse(_ageController.text) ?? widget.age,
-                    _professionController.text,
-                    _interestsController.text,
-                    _aboutMeController.text,
-                    _locationController.text,
-                  );
-                  Navigator.pop(context);
+                  // Validate inputs
+                  if (_validateInputs()) {
+                    widget.onSave(
+                      _nameController.text,
+                      int.tryParse(_ageController.text) ?? widget.age,
+                      _professionController.text,
+                      _interestsController.text,
+                      _aboutMeController.text,
+                      _locationController.text,
+                    );
+                    Navigator.pop(context);
+                  }
                 },
                 child: Text('Save'),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  bool _validateInputs() {
+    // Basic input validation
+    if (_nameController.text.isEmpty) {
+      _showErrorDialog('Name cannot be empty');
+      return false;
+    }
+
+    if (_ageController.text.isEmpty) {
+      _showErrorDialog('Age cannot be empty');
+      return false;
+    }
+
+    int? age = int.tryParse(_ageController.text);
+    if (age == null || age < 18 || age > 120) {
+      _showErrorDialog('Please enter a valid age');
+      return false;
+    }
+
+    return true;
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Invalid Input'),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Okay'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+          )
+        ],
       ),
     );
   }
